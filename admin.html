@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FoodVote - Quản trị</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f7f8;margin:0;color:#171717}.wrap{max-width:760px;margin:auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin:14px 0}input,button{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font:inherit;margin:5px 0}button{background:#111827;color:#fff}.danger{background:#b91c1c}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.msg{padding:10px;color:#555}@media(max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><main class="wrap"><h1>👨‍💼 FoodVote — Quản trị</h1>
+<div id="login" class="card"><h2>Đăng nhập</h2><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Mật khẩu"><button onclick="login()">Đăng nhập</button><div id="loginMsg" class="msg"></div></div>
+<div id="app" style="display:none"><div class="card"><h2>Thêm nhà hàng</h2><div class="row"><input id="name" placeholder="Tên nhà hàng"><input id="category" placeholder="Loại món"></div><div class="row"><input id="city" placeholder="Thành phố"><input id="emoji" placeholder="Emoji" value="🍜"></div><input id="description" placeholder="Mô tả"><button onclick="addRestaurant()">Thêm nhà hàng</button><div id="msg" class="msg"></div></div><div id="list"></div><button onclick="logout()">Đăng xuất</button><a href="index.html" style="display:block;text-align:center;margin:18px">← Về trang bình chọn</a></div></main>
+<script>
+const SUPABASE_URL="https://ydeulfmqtojcoovcowey.supabase.co", SUPABASE_PUBLISHABLE_KEY="sb_publishable__kxFmB8Rqjchje6W8jDnsQ_ZrF1bKg_";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+async function login(){const {error}=await db.auth.signInWithPassword({email:email.value,password:password.value});loginMsg.textContent=error?error.message:"Đã đăng nhập";if(!error)show()}
+async function show(){const {data:{session}}=await db.auth.getSession();if(session){login.style.display="none";app.style.display="block";load()}else{login.style.display="block";app.style.display="none"}}
+async function logout(){await db.auth.signOut();show()}
+async function load(){const {data,error}=await db.from("restaurants").select("*").order("created_at",{ascending:false});list.innerHTML=error?`<div class="card">${error.message}</div>`:(data||[]).map(r=>`<div class="card"><b>${esc(r.emoji||"🍜")} ${esc(r.name)}</b><div>${esc(r.category||"")} · ${esc(r.city||"")} · 🗳️ ${r.votes}</div><div>${esc(r.description||"")}</div><button class="danger" onclick="hideRestaurant(${r.id})">${r.active?"Ẩn nhà hàng":"Đã ẩn"}</button></div>`).join("")}
+async function addRestaurant(){const {error}=await db.from("restaurants").insert({name:name.value,category:category.value,city:city.value,emoji:emoji.value,description:description.value});msg.textContent=error?error.message:"Đã thêm nhà hàng";if(!error){name.value=category.value=city.value=description.value="";emoji.value="🍜";load()}}
+async function hideRestaurant(id){const {error}=await db.from("restaurants").update({active:false}).eq("id",id);if(error)alert(error.message);load()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+show();
+</script></body></html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FoodVote - Bình chọn nhà hàng</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f7f8;color:#171717}
+    .hero{background:linear-gradient(135deg,#111827,#374151);color:#fff;padding:32px 18px}.wrap{max-width:1000px;margin:auto}
+    h1{margin:0 0 8px;font-size:32px}.hero p{margin:0;color:#d1d5db}.toolbar{display:grid;grid-template-columns:1fr auto auto;gap:10px;margin:20px 0}
+    input,select,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #ddd;background:#fff}button{cursor:pointer}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 2px 8px #0000000a}
+    .top{display:flex;justify-content:space-between;gap:10px}.emoji{font-size:42px}.rank{font-weight:800;color:#6b7280}.name{font-size:20px;font-weight:800;margin:8px 0}.meta{color:#6b7280;font-size:14px}.desc{min-height:42px;color:#4b5563;margin:12px 0}.vote{width:100%;background:#111827;color:#fff;border:0;font-weight:700}.vote:disabled{opacity:.55}
+    .empty,.status{padding:24px;text-align:center;color:#6b7280}.admin-link{text-align:center;margin:24px}.admin-link a{color:#374151}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 18px;border-radius:999px;display:none}
+    @media(max-width:650px){.toolbar{grid-template-columns:1fr}.hero{padding:26px 16px}}
+  </style>
+</head>
+<body>
+<header class="hero"><div class="wrap"><h1>🍜 FoodVote</h1><p>Bình chọn nhà hàng yêu thích của bạn</p></div></header>
+<main class="wrap">
+  <div class="toolbar">
+    <input id="search" placeholder="🔎 Tìm nhà hàng...">
+    <select id="city"><option value="">Tất cả thành phố</option></select>
+    <select id="sort"><option value="votes">Nhiều phiếu nhất</option><option value="new">Mới nhất</option><option value="name">Tên A-Z</option></select>
+  </div>
+  <div id="status" class="status">Đang tải...</div>
+  <section id="cards" class="cards"></section>
+  <div class="admin-link"><a href="admin.html">Trang quản trị</a></div>
+</main>
+<div id="toast" class="toast"></div>
+<script>
+const SUPABASE_URL = "https://ydeulfmqtojcoovcowey.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable__kxFmB8Rqjchje6W8jDnsQ_ZrF1bKg_";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let restaurants=[];
+const votedKey="foodvote_voted_ids";
+const voted=()=>JSON.parse(localStorage.getItem(votedKey)||"[]");
+function toast(t){const x=document.getElementById("toast");x.textContent=t;x.style.display="block";setTimeout(()=>x.style.display="none",2200)}
+async function load(){
+  const {data,error}=await db.from("restaurants").select("*").eq("active",true).order("votes",{ascending:false}).order("created_at",{ascending:false});
+  if(error){document.getElementById("status").textContent="Không tải được dữ liệu. Kiểm tra Project URL và Publishable key.";return}
+  restaurants=data||[]; fillCities(); render();
+}
+function fillCities(){
+  const s=document.getElementById("city"), old=s.value;
+  s.innerHTML='<option value="">Tất cả thành phố</option>'+[...new Set(restaurants.map(x=>x.city).filter(Boolean))].sort().map(c=>`<option>${escapeHtml(c)}</option>`).join("");
+  s.value=old;
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function render(){
+  const q=document.getElementById("search").value.toLowerCase().trim(), city=document.getElementById("city").value, sort=document.getElementById("sort").value;
+  let a=restaurants.filter(x=>(!q||`${x.name} ${x.category||""} ${x.city||""}`.toLowerCase().includes(q))&&(!city||x.city===city));
+  if(sort==="name")a.sort((x,y)=>x.name.localeCompare(y.name,"vi"));
+  if(sort==="new")a.sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  else if(sort==="votes")a.sort((x,y)=>y.votes-x.votes);
+  document.getElementById("status").style.display=a.length?"none":"block";
+  document.getElementById("status").textContent=a.length?"":"Không tìm thấy nhà hàng.";
+  const ids=voted();
+  document.getElementById("cards").innerHTML=a.map((x,i)=>`<article class="card">
+    <div class="top"><div class="emoji">${escapeHtml(x.emoji||"🍜")}</div><div class="rank">#${i+1}</div></div>
+    <div class="name">${escapeHtml(x.name)}</div><div class="meta">${escapeHtml(x.category||"")} · ${escapeHtml(x.city||"")}</div>
+    <div class="desc">${escapeHtml(x.description||"")}</div>
+    <div style="font-weight:800;margin-bottom:10px">🗳️ ${x.votes} phiếu</div>
+    <button class="vote" ${ids.includes(x.id)?"disabled":""} onclick="vote(${x.id})">${ids.includes(x.id)?"✓ Đã bình chọn":"Bình chọn"}</button>
+  </article>`).join("");
+}
+async function vote(id){
+  if(voted().includes(id))return toast("Bạn đã bình chọn nhà hàng này.");
+  const {data,error}=await db.rpc("cast_vote",{restaurant_id_input:id});
+  if(error){toast(error.message||"Không thể bình chọn");return}
+  localStorage.setItem(votedKey,JSON.stringify([...voted(),id]));
+  const r=restaurants.find(x=>x.id===id);if(r)r.votes=data?.votes??r.votes+1;
+  render();toast("Cảm ơn bạn đã bình chọn! 🎉");
+}
+["search","city","sort"].forEach(id=>document.getElementById(id).addEventListener("input",render));
+load();
+</script>
+</body></html>
