@@ -10,7 +10,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 <div id="app" style="display:none"><div class="card"><h2>Thêm nhà hàng</h2><div class="row"><input id="name" placeholder="Tên nhà hàng"><input id="category" placeholder="Loại món"></div><div class="row"><input id="city" placeholder="Thành phố"><input id="emoji" placeholder="Emoji" value="🍜"></div><input id="description" placeholder="Mô tả"><button onclick="addRestaurant()">Thêm nhà hàng</button><div id="msg" class="msg"></div></div><div id="list"></div><button onclick="logout()">Đăng xuất</button><a href="index.html" style="display:block;text-align:center;margin:18px">← Về trang bình chọn</a></div></main>
 <script>
 const SUPABASE_URL="https://ydeulfmqtojcoovcowey.supabase.co", SUPABASE_PUBLISHABLE_KEY="sb_publishable__kxFmB8Rqjchje6W8jDnsQ_ZrF1bKg_";
-const db=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable__kxFmB8Rqjchje6W8jDnsQ_ZrF1bKg_";const db=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+ const db=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 async function login(){const {error}=await db.auth.signInWithPassword({email:email.value,password:password.value});loginMsg.textContent=error?error.message:"Đã đăng nhập";if(!error)show()}
 async function show(){const {data:{session}}=await db.auth.getSession();if(session){login.style.display="none";app.style.display="block";load()}else{login.style.display="block";app.style.display="none"}}
 async function logout(){await db.auth.signOut();show()}
